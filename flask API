@@ -1,0 +1,81 @@
+from flask import Flask, request, jsonify
+import pyfmi
+import numpy as np
+
+app = Flask(__name__)
+
+@app.route('/simulate', methods=['POST'])
+def simulate():
+    data = request.json  # Get JSON data from the request
+
+    # Load FMU model and set parameters based on received JSON data
+    model = pyfmi.load_fmu('C:/inetpub/wwwroot/ElectronSizingUAT/PYFMU/GasSizing_FMU.fmu')
+    model.set('Inlet_Temperature', data['Inlet_Temperature'])
+    model.set('Low_Fixture_Temperature', data['Low_Fixture_Temperature'])
+    model.set('High_Fixture_Temperature', data['High_Fixture_Temperature'])
+    model.set('Elevation', data['Elevation'])
+    model.set('Fixture_Unit_Total', data['Fixture_Unit_Total'])
+    model.set('High_Fixture_Unit_Total', data['High_Fixture_Unit_Total'])
+    model.set('Business_Type', data['Business_Type'])
+    model.set('ASME', data['ASME'])
+    model.set('HEX', data['HEX'])
+    model.set('High_Temp_FU', data['High_Temp_FU'])
+    model.set('Booster_MixingValve', data['Booster_MixingValve'])
+    model.set('Indoor_Outdoor', data['Indoor_Outdoor'])
+
+    # Simulate the model
+    result = model.simulate(start_time=0, final_time=86400)
+
+    # Convert NumPy arrays to Python lists
+    output_result = {
+        'output_key_1': result['Index1.y'][-1].tolist(),
+        'output_key_2': result['Index2.y'][-1].tolist(),
+        'Demand_Denominator': result['Demand_Denominator.y'][-1].tolist(),
+        'Demand_Denominator2': result['Demand_Denominator2.y'][-1].tolist()        
+    }
+
+    # Return the JSON serializable output
+    return jsonify(output_result)
+
+if __name__ == '__main__':
+    app.run(debug=True, port=8001)
+from flask import Flask, request, jsonify
+import pyfmi
+import pyfmi.fmi_util
+from pyfmi import fmi_algorithm_drivers
+import timeit
+import pyfmi.common.core 
+import pyfmi.common.io
+#import PyInstaller.utils.hooks 
+import pyfmi.common
+import numpy as np
+
+app = Flask(__name__)
+
+@app.route('/simulate', methods=['POST'])
+def simulate():
+    data = request.json  # Get JSON data from the request
+
+    # Load FMU model and set parameters based on received JSON data
+    model = pyfmi.load_fmu('C:/inetpub/wwwroot/ElectronSizingUAT/PYFMU/GasSizing_FMU.fmu')
+    model.set('input', data['input1'])
+    model.set('input', data['input2'])
+    model.set('input', data['input3'])
+    model.set('input', data['input4'])
+    model.set('input', data['input5'])
+    # Simulate the model
+    result = model.simulate(start_time=0, final_time=86400)
+
+    # Convert NumPy arrays to Python lists
+    output_result = {
+        'output_key_1': result['Index1.y'][-1].tolist(),
+        'output_key_2': result['Index2.y'][-1].tolist(),
+        'Demand_Denominator': result['Demand_Denominator.y'][-1].tolist(),
+        'Demand_Denominator2': result['Demand_Denominator2.y'][-1].tolist()        
+    }
+
+    # Return the JSON serializable output
+    return jsonify(output_result)
+
+if __name__ == '__main__':
+    app.run(debug=True, port=8001)
