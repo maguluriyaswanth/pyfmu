@@ -1,0 +1,226 @@
+import sys
+import os
+import pyodbc
+import pyfmi
+import pandas as pd
+import logging
+import datetime
+import time
+import shutil
+
+# ODBC connection string and CSV directory
+connection_string = 'XXXXX'
+csv_directory = "C:/inetpub/wwwroot/FmuCsvFiles/"
+logging.basicConfig(filename='Multi_STD_file.log', level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+
+while True:
+    conn = pyodbc.connect(connection_string)
+    query = "query"
+    selected_rows = pd.read_sql_query(query, conn)
+    cursor = conn.cursor()
+    conn.commit()
+    conn.close()
+
+    for index, row in selected_rows.iterrows():
+        try:
+            start_time = datetime.datetime.now()
+            input_c=20
+            input_d =75
+            input_e =49
+            input_f = 5
+            input_iE1_Count=3
+            print(input_g)
+            highest_iE1_Max_true = 0
+            highest_iE1_Max_false = 0
+            ThermalBatterySOC_true = 0
+            ThermalBatterySOC_false = 0
+            COP_true = 0 
+            COP_false = 0
+            HW_outMixDes_true = 0
+            HW_outMixDes_false = 0
+            TerminationBlock_true = 0
+            TerminationBlock_false = 0
+
+            i = 1
+
+            while i > 0:
+                elapsed_time = (datetime.datetime.now() - start_time).total_seconds()
+                print(elapsed_time)
+                if elapsed_time > 1800:
+                    conn = pyodbc.connect(connection_string)
+                    cursor = conn.cursor()
+                    sql_statement = "UPDATE SizingCalc SET DynamicFMU_Flag='E' WHERE id=?"
+                    print(f"Executing SQL statement: {sql_statement} with id={int(row['id'])}")
+                    cursor.execute(sql_statement, int(row['id']))
+                    conn.commit()
+                    conn.close()
+                    print(f"Simulation for Low_load_profile=False exceeded 15 minutes. Breaking loop for row {row['id']}.")
+                    print(f"Executing SQL statement: {sql_statement} with id={int(row['id'])}")
+                    logging.info(f"Simulation for Low_load_profile=False exceeded 15 minutes. Breaking loop for row {row['id']}.")
+                    break
+                try:
+                    if input_g=='Lodging/Hotel':               
+                        model = pyfmi.load_fmu('Hotels.fmu')
+                        model.set('Low_load_profile', False)
+                        print('Lodging/Hotel')
+                    model.set('iE1_Count', input_iE1_Count)
+                    model.set('N_rooms', input_c)
+                    model.set('N_Fixtures', input_d)
+                    model.set('GWT', input_e)
+                    model.set('Zone', input_f)
+                    print('else comple22')
+
+                    result = model.simulate(start_time=0, final_time=86401)
+                    print('result')
+                    highest_iE1_Max_false = max(highest_iE1_Max_false, result['NumberOfHeatPumps.showNumber'][-1])
+                    ThermalBatterySOC_false = max(ThermalBatterySOC_false, result['ThermalBatterySOC.showNumber'][-1])
+                    COP_false = max(COP_false, result['COP.showNumber'][-1])
+                    HW_outMixDes_false = max(HW_outMixDes_false, result['HW_outMixDes.showNumber'][-1])
+                    TerminationBlock_false = max(TerminationBlock_false, result['TerminationBlock.y'][-1])
+                    print(f'Low_load_profile: False, i: {i}, input_iE1_Count: {input_iE1_Count}, output_iE1_Max: {highest_iE1_Max_false}')
+                    logging.info(f"Row {row['id']} processed successfully, Low_load_profile: False, i: {i}, input_iE1_Count: {input_iE1_Count}, output_iE1_Max: {highest_iE1_Max_false}")
+                    current_value = int(input_iE1_Count)
+                    
+                    if int(input_iE1_Count) == int(highest_iE1_Max_false):
+                        break
+                    else:
+                        if current_value == int(highest_iE1_Max_false):
+                            break
+                        else:
+                            input_iE1_Count = int(highest_iE1_Max_false)
+                    
+                    i += 1
+                except Exception as e:
+                    end_time = datetime.datetime.now()
+                    if input_g=='Lodging/Hotel':               
+                       data = 'C:/inetpub/wwwroot/ElectronSizingUAT/PYFMU/Hotels_ReducedOrderModel_Hotels_STD_V7_1_log.txt'
+                  
+                    new_file_path = f"log_STD_{row['id']}.txt"
+                    shutil.copyfile(data, new_file_path)
+                    conn = pyodbc.connect(connection_string)
+                    cursor = conn.cursor()
+                    cursor.execute("UPDATE SizingCalc SET DynamicFMU_Flag='E' WHERE id=?", int(row['id']))
+                    conn.commit()
+                    conn.close()
+                    break
+
+            i = 1
+
+            while i > 0:
+                elapsed_time = (datetime.datetime.now() - start_time).total_seconds()
+                print(elapsed_time)
+                if elapsed_time > 1800:
+                    conn = pyodbc.connect(connection_string)
+                    cursor = conn.cursor()
+                    sql_statement = "UPDATE SizingCalc SET DynamicFMU_Flag='E' WHERE id=?"
+                    print(f"Executing SQL statement: {sql_statement} with id={int(row['id'])}")
+                    cursor.execute(sql_statement, int(row['id']))
+                    conn.commit()
+                    conn.close()
+                    print(f"Simulation for Low_load_profile=False exceeded 15 minutes. Breaking loop for row {row['id']}.")
+                    print(f"Executing SQL statement: {sql_statement} with id={int(row['id'])}")
+                    logging.info(f"Simulation for Low_load_profile=False exceeded 15 minutes. Breaking loop for row {row['id']}.")
+                    break
+                try:
+
+                    if input_g=='Lodging/Hotel':               
+                        model = pyfmi.load_fmu('C:/inetpub/wwwroot/ElectronSizingUAT/PYFMU/Hotels_STD_V7_1.fmu')
+                        model.set('Low_load_profile', True)
+                        print('Lodging/Hotel')
+                    
+                    #model = pyfmi.load_fmu('Hotels_STD_V7_1.fmu')
+                    model.set('iE1_Count', input_iE1_Count)
+                    model.set('N_rooms', input_c)
+                    model.set('N_Fixtures', input_d)
+                    model.set('GWT', input_e)
+                    model.set('Zone', input_f)
+                    #model.set('Low_load_profile', True)
+
+                    result = model.simulate(start_time=0, final_time=86401)
+
+                    highest_iE1_Max_true = max(highest_iE1_Max_true, result['NumberOfHeatPumps.showNumber'][-1])
+                    ThermalBatterySOC_true = max(ThermalBatterySOC_true, result['ThermalBatterySOC.showNumber'][-1])
+                    COP_true = max(COP_true, result['COP.showNumber'][-1])
+                    HW_outMixDes_true = max(HW_outMixDes_true, result['HW_outMixDes.showNumber'][-1])
+                    TerminationBlock_true = max(TerminationBlock_true, result['TerminationBlock.y'][-1])
+                    print(f'Low_load_profile: True, i: {i}, input_iE1_Count: {input_iE1_Count}, output_iE1_Max: {highest_iE1_Max_true}')
+                    logging.info(f"Row {row['id']} processed successfully, Low_load_profile: True, i: {i}, input_iE1_Count: {input_iE1_Count}, output_iE1_Max: {highest_iE1_Max_true}")
+                    current_value = int(input_iE1_Count)
+                    
+                    if int(input_iE1_Count) == int(highest_iE1_Max_true):
+                        break
+                    else:
+                        if current_value == int(highest_iE1_Max_true):
+                            break
+                        else:
+                            input_iE1_Count = int(highest_iE1_Max_true)
+                    
+                    
+
+                    i += 1
+                except Exception as e:
+                    end_time = datetime.datetime.now()
+                    if input_g=='Lodging/Hotel':               
+                       data = 'C:/inetpub/wwwroot/ElectronSizingUAT/PYFMU/Hotels_ReducedOrderModel_Hotels_STD_V7_1_log.txt'
+                    new_file_path = f"log_STD_{row['id']}.txt"
+                    shutil.copyfile(data, new_file_path)
+                    conn = pyodbc.connect(connection_string)
+                    cursor = conn.cursor()
+                    cursor.execute("UPDATE SizingCalc SET DynamicFMU_Flag='E' WHERE id=?", int(row['id']))
+                    conn.commit()
+                    conn.close()
+                    break
+
+            selected_iE1_Max = max(highest_iE1_Max_true, highest_iE1_Max_false)
+            selected_low_load_profile = highest_iE1_Max_true > highest_iE1_Max_false
+
+            if selected_iE1_Max > 0:
+                selected_df = pd.DataFrame({
+                    'Low_load_profile': [selected_low_load_profile] * len(result['Time']),
+                    'input_iE1_Count': input_iE1_Count,
+                    'Time': result['Time'],
+                    'NumberOfHeatPumps': result['NumberOfHeatPumps.showNumber'],
+                    'ThermalBatterySOC': result['ThermalBatterySOC.showNumber'],
+                    'COP': result['COP.showNumber'],
+                    'HW_outMixDes': result['HW_outMixDes.showNumber'],
+                    'TerminationBlock': result['TerminationBlock.y']
+                })
+
+                csv_file_path = os.path.join(csv_directory, f'STD_{row["id"]}.csv')
+                selected_df.to_csv(csv_file_path, index=False)
+
+                end_time = datetime.datetime.now()
+                conn = pyodbc.connect(connection_string)
+                cursor = conn.cursor()
+                cursor.execute("UPDATE SizingCalc SET iE1_Standard=?, DynamicFMU_Flag='Y' WHERE id=?", selected_iE1_Max, int(row['id']))
+                existing_record = cursor.execute("SELECT JobId FROM FMU_Output WHERE JobId=? and ModelType ='STD' ", int(row['id'])).fetchone()
+
+                if existing_record:
+                    update_query = "UPDATE FMU_Output SET ThermalBatterySOC=?, COP=?, NumberOfHeatPumps=?, HW_outMixDes=?, ModelType=?, StartDateTime=?, EndDateTime=?, IsModelFlag=? WHERE JobId=?"
+                    update_values = [max(ThermalBatterySOC_false, ThermalBatterySOC_true),
+                                     max(COP_false, COP_true), selected_iE1_Max,
+                                     max(HW_outMixDes_false, HW_outMixDes_true), 'STD', start_time, end_time, 'Y', int(row['id'])]
+                    cursor.execute(update_query, update_values)
+                    conn.commit()
+                    conn.close()
+                    break
+                else:
+                    insert_query = "INSERT INTO FMU_Output (JobId, ThermalBatterySOC, COP, NumberOfHeatPumps, HW_outMixDes, ModelType, StartDateTime, EndDateTime, IsModelFlag) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)"
+                    insert_values = [int(row['id']), max(ThermalBatterySOC_false, ThermalBatterySOC_true),
+                                     max(COP_false, COP_true), selected_iE1_Max,
+                                     max(HW_outMixDes_false, HW_outMixDes_true), 'STD', start_time, end_time, 'Y']
+                    cursor.execute(insert_query, insert_values)
+                    conn.commit()
+                    conn.close()
+                    break
+            else:
+                # If simulation is not successful, update flags as 'E'
+                cursor.execute("UPDATE FMU_Output SET IsModelFlag='E' WHERE JobId=?", int(row['id']))
+                cursor.execute("UPDATE SizingCalc SET DynamicFMU_Flag='E' WHERE id=?", int(row['id']))
+                conn.commit()
+                conn.close()
+
+        except Exception as e:
+            logging.error(f"Error processing row {row['id']}: {e}")
+
+    time.sleep(400)  # Sleep for 10 seconds before checking for inputs again
